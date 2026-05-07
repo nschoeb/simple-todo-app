@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
-import Auth from './Auth' // <-- Importing our new gatekeeper
+import Auth from './Auth'
 
 function App() {
   const [session, setSession] = useState(null)
   const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState('')
+  const [newDueDate, setNewDueDate] = useState('')
 
-  // Check if the user is logged in when the app loads
+  // 1. Manage User Session
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -22,7 +23,7 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Only fetch tasks if they are logged in
+  // 2. Load tasks when user logs in
   useEffect(() => {
     if (session) {
       fetchTasks()
@@ -30,16 +31,30 @@ function App() {
   }, [session])
 
   async function fetchTasks() {
+    // We sort by id here to keep the list stable
     const { data } = await supabase.from('tasks').select('*').order('id', { ascending: true })
     setTasks(data || [])
   }
 
+  // 3. CRUD Operations
   async function addTask(e) {
     e.preventDefault()
     if (!newTask) return
-    await supabase.from('tasks').insert([{ content: newTask }])
-    setNewTask('')
-    fetchTasks()
+    
+    const payload = { content: newTask }
+    if (newDueDate) {
+      payload.due_date = newDueDate
+    }
+
+    const { error } = await supabase.from('tasks').insert([payload])
+    
+    if (error) {
+      console.error("Error adding task:", error.message)
+    } else {
+      setNewTask('')
+      setNewDueDate('')
+      fetchTasks()
+    }
   }
 
   async function toggleComplete(id, currentState) {
@@ -58,12 +73,11 @@ function App() {
     fetchTasks()
   }
 
-  // THE BOUNCER: If no session, render the Login screen and stop here.
+  // Auth Gatekeeper
   if (!session) {
     return <Auth />
   }
 
-  // If they DO have a session, render the main app
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-6 font-sans">
       <div className="max-w-xl mx-auto">
@@ -75,7 +89,6 @@ function App() {
             <p className="text-gray-500 text-sm">Manage your daily objectives and tracking.</p>
           </div>
           
-          {/* Sign Out Button */}
           <button 
             onClick={() => supabase.auth.signOut()}
             className="text-sm text-gray-400 hover:text-gray-800 transition-colors mb-1 font-medium"
@@ -84,7 +97,8 @@ function App() {
           </button>
         </header>
 
-        <form onSubmit={addTask} className="flex gap-3 mb-10">
+        {/* Input Form */}
+        <form onSubmit={addTask} className="flex flex-col sm:flex-row gap-3 mb-10">
           <input
             type="text"
             value={newTask}
@@ -92,11 +106,20 @@ function App() {
             placeholder="Add a new task..."
             className="flex-1 bg-white border border-gray-200 rounded-md px-4 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-black transition-all"
           />
-          <button className="bg-black hover:bg-gray-800 text-white text-sm font-medium px-5 py-2 rounded-md transition-all">
+          
+          <input
+            type="date"
+            value={newDueDate}
+            onChange={(e) => setNewDueDate(e.target.value)}
+            className="bg-white border border-gray-200 rounded-md px-3 py-2 text-sm shadow-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-black transition-all"
+          />
+
+          <button className="bg-black hover:bg-gray-800 text-white text-sm font-medium px-5 py-2 rounded-md transition-all whitespace-nowrap">
             Add Task
           </button>
         </form>
 
+        {/* Task List */}
         <div className="space-y-2">
           {tasks.map((task) => (
             <div 
@@ -105,14 +128,22 @@ function App() {
             >
               <div 
                 onClick={() => toggleComplete(task.id, task.is_completed)}
-                className="flex items-center gap-3 cursor-pointer flex-1"
+                className="flex items-center gap-4 cursor-pointer flex-1"
               >
                 <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded ${task.is_completed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
                   {task.is_completed ? 'Done' : 'Pending'}
                 </span>
-                <span className={`text-sm font-medium transition-all ${task.is_completed ? 'text-gray-300 line-through' : 'text-gray-700'}`}>
-                  {task.content}
-                </span>
+                
+                <div className="flex flex-col">
+                  <span className={`text-sm font-medium transition-all ${task.is_completed ? 'text-gray-300 line-through' : 'text-gray-700'}`}>
+                    {task.content}
+                  </span>
+                  {task.due_date && (
+                    <span className={`text-xs mt-0.5 font-medium ${task.is_completed ? 'text-gray-300' : 'text-gray-400'}`}>
+                      🗓 {new Date(task.due_date).toLocaleDateString(undefined, { timeZone: 'UTC' })}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <button 
