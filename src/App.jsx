@@ -1,13 +1,33 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import Auth from './Auth' // <-- Importing our new gatekeeper
 
 function App() {
+  const [session, setSession] = useState(null)
   const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState('')
 
+  // Check if the user is logged in when the app loads
   useEffect(() => {
-    fetchTasks()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
+
+  // Only fetch tasks if they are logged in
+  useEffect(() => {
+    if (session) {
+      fetchTasks()
+    }
+  }, [session])
 
   async function fetchTasks() {
     const { data } = await supabase.from('tasks').select('*').order('id', { ascending: true })
@@ -17,7 +37,6 @@ function App() {
   async function addTask(e) {
     e.preventDefault()
     if (!newTask) return
-    // FIXED: Changed 'task' to 'content' to match your database
     await supabase.from('tasks').insert([{ content: newTask }])
     setNewTask('')
     fetchTasks()
@@ -39,14 +58,30 @@ function App() {
     fetchTasks()
   }
 
+  // THE BOUNCER: If no session, render the Login screen and stop here.
+  if (!session) {
+    return <Auth />
+  }
+
+  // If they DO have a session, render the main app
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-6 font-sans">
       <div className="max-w-xl mx-auto">
-        <header className="mb-12 pt-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-800">
-            Simple task tracker
-          </h1>
-          <p className="text-gray-500 text-sm">You can add tasks, mark them as completed, or delete them at any time.</p>
+        <header className="mb-12 pt-8 flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-800">
+              Project Workspace
+            </h1>
+            <p className="text-gray-500 text-sm">Manage your daily objectives and tracking.</p>
+          </div>
+          
+          {/* Sign Out Button */}
+          <button 
+            onClick={() => supabase.auth.signOut()}
+            className="text-sm text-gray-400 hover:text-gray-800 transition-colors mb-1 font-medium"
+          >
+            Sign out
+          </button>
         </header>
 
         <form onSubmit={addTask} className="flex gap-3 mb-10">
@@ -75,7 +110,6 @@ function App() {
                 <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded ${task.is_completed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
                   {task.is_completed ? 'Done' : 'Pending'}
                 </span>
-                {/* FIXED: Changed task.task to task.content */}
                 <span className={`text-sm font-medium transition-all ${task.is_completed ? 'text-gray-300 line-through' : 'text-gray-700'}`}>
                   {task.content}
                 </span>
