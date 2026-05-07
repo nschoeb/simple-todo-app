@@ -29,8 +29,8 @@ export default function Auth() {
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50 font-sans">
       <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 w-full max-w-sm">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-800 mb-2">Welcome</h1>
-        <p className="text-sm text-gray-500 mb-6">Sign in to your workspace.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-gray-800 mb-2">Nathaniel's Task Tracker</h1>
+        <p className="text-sm text-gray-500 mb-6">Please provide an email that you can access for authentication purposes</p>
 
         <form className="space-y-4">
           <div>
