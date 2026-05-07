@@ -44,9 +44,9 @@ function App() {
       <div className="max-w-xl mx-auto">
         <header className="mb-12 pt-8">
           <h1 className="text-2xl font-semibold tracking-tight text-gray-800">
-            Project Workspace
+            Simple task tracker
           </h1>
-          <p className="text-gray-500 text-sm">Manage your daily objectives and tracking.</p>
+          <p className="text-gray-500 text-sm">You can add tasks, mark them as completed, or delete them at any time.</p>
         </header>
 
         <form onSubmit={addTask} className="flex gap-3 mb-10">
