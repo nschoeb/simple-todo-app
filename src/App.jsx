@@ -13,6 +13,8 @@ function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
+    // Clear the hash from the URL so it looks clean again
+    if (session) window.history.replaceState({}, document.title, window.location.pathname);
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
